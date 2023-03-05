@@ -31,7 +31,7 @@
 #include <memory.h>
 #include <wchar.h>
 
-#include <d3d10_1.h>
+#include <d3d11.h>
 #include <d3dx10math.h>
 #include <d2d1.h>
 #include <d2d1helper.h>
@@ -125,11 +125,12 @@ private:
     HRESULT RenderD2DContentIntoSurface();
 
     HRESULT CreateD3DDevice(
-        IDXGIAdapter *pAdapter,
-        D3D10_DRIVER_TYPE driverType,
-        UINT flags,
-        ID3D10Device1 **ppDevice
-        );
+       IDXGIAdapter* pAdapter,
+       D3D_DRIVER_TYPE driverType,
+       UINT flags,
+       ID3D11Device** ppDevice,
+       ID3D11DeviceContext** ppDeviceContext
+    );
 
     static LRESULT CALLBACK WndProc(
         HWND hWnd,
@@ -148,11 +149,10 @@ private:
         ID2D1Bitmap **ppBitmap
         );
 
-    HRESULT LoadResourceShader(
-        ID3D10Device *pDevice,
-        PCWSTR pszResource,
-        ID3D10Effect **ppEffect
-        );
+    HRESULT LoadPixelShader(
+       ID3D11Device* pDevice,
+       PCWSTR pszResource,
+       ID3D11PixelShader** ppShader);
 
 private:
     HWND m_hwnd;
@@ -161,18 +161,19 @@ private:
     IDWriteFactory *m_pDWriteFactory;
 
     //Device-Dependent Resources
-    ID3D10Device *m_pDevice;
+    ID3D11Device *m_pDevice;
+    ID3D11DeviceContext *m_pDeviceContext;
     IDXGISwapChain *m_pSwapChain;
-    ID3D10RenderTargetView *m_pRenderTargetView;
-    ID3D10RasterizerState *m_pState;
-    ID3D10Texture2D *m_pDepthStencil;
-    ID3D10DepthStencilView *m_pDepthStencilView;
-    ID3D10Texture2D *m_pOffscreenTexture;
-    ID3D10Effect *m_pShader;
-    ID3D10Buffer *m_pVertexBuffer;
-    ID3D10InputLayout *m_pVertexLayout;
-    ID3D10Buffer *m_pFacesIndexBuffer;
-    ID3D10ShaderResourceView *m_pTextureRV;
+    ID3D11RenderTargetView *m_pRenderTargetView;
+    ID3D11RasterizerState *m_pState;
+    ID3D11Texture2D *m_pDepthStencil;
+    ID3D11DepthStencilView *m_pDepthStencilView;
+    ID3D11Texture2D *m_pOffscreenTexture;
+    ID3D11PixelShader *m_pShader;
+    ID3D11Buffer *m_pVertexBuffer;
+    ID3D11InputLayout *m_pVertexLayout;
+    ID3D11Buffer *m_pFacesIndexBuffer;
+    ID3D11ShaderResourceView *m_pTextureRV;
 
     ID2D1RenderTarget *m_pBackBufferRT;
     ID2D1SolidColorBrush *m_pBackBufferTextBrush;
@@ -184,11 +185,11 @@ private:
     ID2D1SolidColorBrush *m_pBlackBrush;
     ID2D1Bitmap *m_pBitmap;
 
-    ID3D10EffectTechnique *m_pTechniqueNoRef;
-    ID3D10EffectMatrixVariable *m_pWorldVariableNoRef;
-    ID3D10EffectMatrixVariable *m_pViewVariableNoRef;
-    ID3D10EffectMatrixVariable *m_pProjectionVariableNoRef;
-    ID3D10EffectShaderResourceVariable *m_pDiffuseVariableNoRef;
+    // ID3D10EffectTechnique *m_pTechniqueNoRef;
+    // ID3D10EffectMatrixVariable *m_pWorldVariableNoRef;
+    // ID3D10EffectMatrixVariable *m_pViewVariableNoRef;
+    // ID3D10EffectMatrixVariable *m_pProjectionVariableNoRef;
+    // ID3D10EffectShaderResourceVariable *m_pDiffuseVariableNoRef;
 
     // Device-Independent Resources
     IDWriteTextFormat *m_pTextFormat;
@@ -198,7 +199,7 @@ private:
     D3DXMATRIX m_ViewMatrix;
     D3DXMATRIX m_ProjectionMatrix;
 
-    static const D3D10_INPUT_ELEMENT_DESC s_InputLayout[];
+    static const D3D11_INPUT_ELEMENT_DESC s_InputLayout[];
     static const SimpleVertex s_VertexArray[];
     static const SHORT DXGISampleApp::s_FacesIndexArray[];
 };

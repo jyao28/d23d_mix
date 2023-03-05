@@ -115,8 +115,8 @@ echo IDR_PIXEL_SHADER RCDATA $(OutDir)dxgisample.fxo &gt; $(OutDir)dxgisample.re
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PreBuildEvent>
       <Message>Compile Shader</Message>
-      <Command>fxc /T fx_4_0 /Fo $(OutDir)dxgisample.fxo dxgisample.fx
-echo IDR_PIXEL_SHADER RCDATA $(OutDir)dxgisample.fxo &gt; $(OutDir)dxgisample.resinclude
+      <Command>fxc /T fx_5_0 /Fo $(OutDir)dxgisample.cso dxgisample.fx
+echo IDR_PIXEL_SHADER RCDATA $(OutDir)dxgisample.cso &gt; $(OutDir)dxgisample.resinclude
 </Command>
     </PreBuildEvent>
     <Midl>
@@ -140,7 +140,7 @@ echo IDR_PIXEL_SHADER RCDATA $(OutDir)dxgisample.fxo &gt; $(OutDir)dxgisample.re
       <Command>echo IDR_PIXEL_SHADER RCDATA $(OutDir)dxgisample.fxo &gt; $(OutDir)dxgisample.resinclude</Command>
     </PreLinkEvent>
     <Link>
-      <AdditionalDependencies>d2d1.lib;dwrite.lib;windowscodecs.lib;dxgi.lib;d3d10_1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;dwrite.lib;windowscodecs.lib;dxgi.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>NotSet</ShowProgress>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>

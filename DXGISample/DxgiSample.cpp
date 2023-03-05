@@ -48,10 +48,10 @@ int WINAPI WinMain(
 *                                                                 *
 ******************************************************************/
 
-/*static*/ const D3D10_INPUT_ELEMENT_DESC DXGISampleApp::s_InputLayout[] =
+/*static*/ const D3D11_INPUT_ELEMENT_DESC DXGISampleApp::s_InputLayout[] =
 {
-    { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D10_INPUT_PER_VERTEX_DATA, 0},
-    { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D10_INPUT_PER_VERTEX_DATA, 0},
+    { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+    { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
 };
 
 /*static*/ const SimpleVertex DXGISampleApp::s_VertexArray[] =
@@ -366,7 +366,8 @@ HRESULT DXGISampleApp::CreateDeviceResources()
 {
     HRESULT hr = S_OK;
     RECT rcClient;
-    ID3D10Device1 *pDevice = NULL;
+    ID3D11Device *pDevice = NULL;
+    ID3D11DeviceContext *pDeviceContext = NULL;
     IDXGIDevice *pDXGIDevice = NULL;
     IDXGIAdapter *pAdapter = NULL;
     IDXGIFactory *pDXGIFactory = NULL;
@@ -384,28 +385,34 @@ HRESULT DXGISampleApp::CreateDeviceResources()
     if (!m_pDevice)
     {
         
-       UINT nDeviceFlags = D3D10_CREATE_DEVICE_BGRA_SUPPORT;
+       UINT nDeviceFlags = 0x0e; // D3D11_CREATE_DEVICE_BGRA_SUPPORT;
         // Create device
         hr = CreateD3DDevice(
             NULL,
-            D3D10_DRIVER_TYPE_HARDWARE,
+            D3D_DRIVER_TYPE_HARDWARE,
             nDeviceFlags,
-            &pDevice
+            &pDevice,
+            &pDeviceContext
             );
 
         if (FAILED(hr))
         {
             hr = CreateD3DDevice(
                 NULL,
-                D3D10_DRIVER_TYPE_WARP,
+                D3D_DRIVER_TYPE_WARP,
                 nDeviceFlags,
-                &pDevice
-                );
+               &pDevice,
+               &pDeviceContext
+            );
         }
 
         if (SUCCEEDED(hr))
         {
             hr = pDevice->QueryInterface(&m_pDevice);
+        }
+        if (SUCCEEDED(hr))
+        {
+            hr = pDeviceContext->QueryInterface(&m_pDeviceContext);
         }
         if (SUCCEEDED(hr))
         {
@@ -474,22 +481,22 @@ HRESULT DXGISampleApp::RecreateSizedResources(UINT nWidth, UINT nHeight)
 {
     HRESULT hr = S_OK;
     IDXGISurface *pBackBuffer = NULL;
-    ID3D10Resource *pBackBufferResource = NULL;
-    ID3D10RenderTargetView *viewList[1] = {NULL};
+    ID3D11Resource *pBackBufferResource = NULL;
+    ID3D11RenderTargetView *viewList[1] = {NULL};
 
     // Ensure that nobody is holding onto one of the old resources
     SafeRelease(&m_pBackBufferRT);
     SafeRelease(&m_pRenderTargetView);
-    m_pDevice->OMSetRenderTargets(1, viewList, NULL);
+    m_pDeviceContext->OMSetRenderTargets(1, viewList, NULL);
 
     // Resize render target buffers
     hr = m_pSwapChain->ResizeBuffers(1, nWidth, nHeight, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
 
     if (SUCCEEDED(hr))
     {
-        D3D10_TEXTURE2D_DESC texDesc;
+        D3D11_TEXTURE2D_DESC texDesc;
         texDesc.ArraySize = 1;
-        texDesc.BindFlags = D3D10_BIND_DEPTH_STENCIL;
+        texDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
         texDesc.CPUAccessFlags = 0;
         texDesc.Format = DXGI_FORMAT_D16_UNORM;
         texDesc.Height = nHeight;
@@ -498,7 +505,7 @@ HRESULT DXGISampleApp::RecreateSizedResources(UINT nWidth, UINT nHeight)
         texDesc.MiscFlags = 0;
         texDesc.SampleDesc.Count = 1;
         texDesc.SampleDesc.Quality = 0;
-        texDesc.Usage = D3D10_USAGE_DEFAULT;
+        texDesc.Usage = D3D11_USAGE_DEFAULT;
 
         SafeRelease(&m_pDepthStencil);
         hr = m_pDevice->CreateTexture2D(&texDesc, NULL, &m_pDepthStencil);
@@ -514,9 +521,9 @@ HRESULT DXGISampleApp::RecreateSizedResources(UINT nWidth, UINT nHeight)
     }
     if (SUCCEEDED(hr))
     {
-        D3D10_RENDER_TARGET_VIEW_DESC renderDesc;
+        D3D11_RENDER_TARGET_VIEW_DESC renderDesc;
         renderDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        renderDesc.ViewDimension = D3D10_RTV_DIMENSION_TEXTURE2D;
+        renderDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
         renderDesc.Texture2D.MipSlice = 0;
 
         SafeRelease(&m_pRenderTargetView);
@@ -524,9 +531,9 @@ HRESULT DXGISampleApp::RecreateSizedResources(UINT nWidth, UINT nHeight)
     }
     if (SUCCEEDED(hr))
     {
-        D3D10_DEPTH_STENCIL_VIEW_DESC depthViewDesc;
+        D3D11_DEPTH_STENCIL_VIEW_DESC depthViewDesc;
         depthViewDesc.Format = DXGI_FORMAT_D16_UNORM;
-        depthViewDesc.ViewDimension = D3D10_DSV_DIMENSION_TEXTURE2D;
+        depthViewDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
         depthViewDesc.Texture2D.MipSlice = 0;
 
         SafeRelease(&m_pDepthStencilView);
@@ -535,17 +542,17 @@ HRESULT DXGISampleApp::RecreateSizedResources(UINT nWidth, UINT nHeight)
     if (SUCCEEDED(hr))
     {
         viewList[0] = m_pRenderTargetView;
-        m_pDevice->OMSetRenderTargets(1, viewList, m_pDepthStencilView);
+        m_pDeviceContext->OMSetRenderTargets(1, viewList, m_pDepthStencilView);
 
         // Set a new viewport based on the new dimensions
-        D3D10_VIEWPORT viewport;
-        viewport.Width = nWidth;
-        viewport.Height = nHeight;
+        D3D11_VIEWPORT viewport;
+        viewport.Width = (float)nWidth;
+        viewport.Height = (float)nHeight;
         viewport.TopLeftX = 0;
         viewport.TopLeftY = 0;
         viewport.MinDepth = 0;
-        viewport.MaxDepth = 1;
-        m_pDevice->RSSetViewports(1, &viewport);
+        viewport.MaxDepth = 1.0f;
+        m_pDeviceContext->RSSetViewports(1, &viewport);
 
         // Get a surface in the swap chain
         hr = m_pSwapChain->GetBuffer(
@@ -560,7 +567,7 @@ HRESULT DXGISampleApp::RecreateSizedResources(UINT nWidth, UINT nHeight)
         D3DMatrixPerspectiveFovLH(
             &m_ProjectionMatrix,
             (float)D3DX_PI * 0.24f, // fovy
-            nWidth / (float)nHeight, // aspect
+           (float)nWidth / (float)nHeight, // aspect
             0.1f, // zn
             100.0f // zf
             );
@@ -574,7 +581,7 @@ HRESULT DXGISampleApp::RecreateSizedResources(UINT nWidth, UINT nHeight)
 
         D2D1_RENDER_TARGET_PROPERTIES props =
             D2D1::RenderTargetProperties(
-                D2D1_RENDER_TARGET_TYPE_DEFAULT,
+               D2D1_RENDER_TARGET_TYPE_HARDWARE, // D2D1_RENDER_TARGET_TYPE_DEFAULT,
                 D2D1::PixelFormat(DXGI_FORMAT_UNKNOWN, D2D1_ALPHA_MODE_PREMULTIPLIED),
                 dpiX,
                 dpiY
@@ -611,13 +618,13 @@ HRESULT DXGISampleApp::CreateD3DDeviceResources()
 
 
     // Create rasterizer state object
-    D3D10_RASTERIZER_DESC rsDesc;
+    D3D11_RASTERIZER_DESC rsDesc;
     rsDesc.AntialiasedLineEnable = FALSE;
-    rsDesc.CullMode = D3D10_CULL_NONE;
+    rsDesc.CullMode = D3D11_CULL_NONE;
     rsDesc.DepthBias = 0;
     rsDesc.DepthBiasClamp = 0;
     rsDesc.DepthClipEnable = TRUE;
-    rsDesc.FillMode = D3D10_FILL_SOLID;
+    rsDesc.FillMode = D3D11_FILL_SOLID;
     rsDesc.FrontCounterClockwise = FALSE; // Must be FALSE for 10on9
     rsDesc.MultisampleEnable = FALSE;
     rsDesc.ScissorEnable = FALSE;
@@ -626,13 +633,13 @@ HRESULT DXGISampleApp::CreateD3DDeviceResources()
     hr = m_pDevice->CreateRasterizerState(&rsDesc, &m_pState);
     if (SUCCEEDED(hr))
     {
-        m_pDevice->RSSetState(m_pState);
-        m_pDevice->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        m_pDeviceContext->RSSetState(m_pState);
+        m_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         // Allocate a offscreen D3D surface for D2D to render our 2D content into
-        D3D10_TEXTURE2D_DESC texDesc;
+        D3D11_TEXTURE2D_DESC texDesc;
         texDesc.ArraySize = 1;
-        texDesc.BindFlags = D3D10_BIND_RENDER_TARGET | D3D10_BIND_SHADER_RESOURCE;
+        texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
         texDesc.CPUAccessFlags = 0;
         texDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
         texDesc.Height = 512;
@@ -641,7 +648,7 @@ HRESULT DXGISampleApp::CreateD3DDeviceResources()
         texDesc.MiscFlags = 0;
         texDesc.SampleDesc.Count = 1;
         texDesc.SampleDesc.Quality = 0;
-        texDesc.Usage = D3D10_USAGE_DEFAULT;
+        texDesc.Usage = D3D11_USAGE_DEFAULT;
 
         hr = m_pDevice->CreateTexture2D(&texDesc, NULL, &m_pOffscreenTexture);
     }
@@ -653,13 +660,13 @@ HRESULT DXGISampleApp::CreateD3DDeviceResources()
     }
     if (SUCCEEDED(hr))
     {
-        D3D10_BUFFER_DESC bd;
-        bd.Usage = D3D10_USAGE_DEFAULT;
+        D3D11_BUFFER_DESC bd;
+        bd.Usage = D3D11_USAGE_DEFAULT;
         bd.ByteWidth = sizeof(s_VertexArray);
-        bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+        bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         bd.CPUAccessFlags = 0;
         bd.MiscFlags = 0;
-        D3D10_SUBRESOURCE_DATA InitData;
+        D3D11_SUBRESOURCE_DATA InitData;
         InitData.pSysMem = s_VertexArray;
 
         hr = m_pDevice->CreateBuffer(&bd, &InitData, &m_pVertexBuffer);
@@ -668,9 +675,9 @@ HRESULT DXGISampleApp::CreateD3DDeviceResources()
             // Set vertex buffer
             UINT stride = sizeof(SimpleVertex);
             UINT offset = 0;
-            ID3D10Buffer *pVertexBuffer = m_pVertexBuffer;
+            ID3D11Buffer *pVertexBuffer = m_pVertexBuffer;
 
-            m_pDevice->IASetVertexBuffers(
+            m_pDeviceContext->IASetVertexBuffers(
                 0, // StartSlot
                 1, // NumBuffers
                 &pVertexBuffer,
@@ -681,13 +688,13 @@ HRESULT DXGISampleApp::CreateD3DDeviceResources()
     }
     if (SUCCEEDED(hr))
     {
-        D3D10_BUFFER_DESC bd;
-        bd.Usage = D3D10_USAGE_DEFAULT;
+        D3D11_BUFFER_DESC bd;
+        bd.Usage = D3D11_USAGE_DEFAULT;
         bd.ByteWidth = sizeof(s_FacesIndexArray);
-        bd.BindFlags = D3D10_BIND_INDEX_BUFFER;
+        bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
         bd.CPUAccessFlags = 0;
         bd.MiscFlags = 0;
-        D3D10_SUBRESOURCE_DATA InitData;
+        D3D11_SUBRESOURCE_DATA InitData;
         InitData.pSysMem = s_FacesIndexArray;
 
         hr = m_pDevice->CreateBuffer(&bd, &InitData, &m_pFacesIndexBuffer);
@@ -696,56 +703,56 @@ HRESULT DXGISampleApp::CreateD3DDeviceResources()
     if (SUCCEEDED(hr))
     {
         // Load pixel shader
-        hr = LoadResourceShader(
+        hr = LoadPixelShader(
             m_pDevice,
             MAKEINTRESOURCE(IDR_PIXEL_SHADER),
             &m_pShader
             );
     }
-    if (SUCCEEDED(hr))
-    {
-        // Obtain the technique
-        m_pTechniqueNoRef = m_pShader->GetTechniqueByName("Render");
-        hr = m_pTechniqueNoRef ? S_OK : E_FAIL;
-    }
-    if (SUCCEEDED(hr))
-    {
-        // Obtain the variables
-        m_pWorldVariableNoRef = m_pShader->GetVariableByName("World")->AsMatrix();
-        hr = m_pWorldVariableNoRef ? S_OK : E_FAIL;
-    }
-    if (SUCCEEDED(hr))
-    {
-        m_pViewVariableNoRef = m_pShader->GetVariableByName("View")->AsMatrix();
-        hr = m_pViewVariableNoRef ? S_OK : E_FAIL;
-
-        if (SUCCEEDED(hr))
-        {
-            // Initialize the view matrix.
-            D3DXVECTOR3 Eye(0.0f, 2.0f, -6.0f);
-            D3DXVECTOR3 At(0.0f, 0.0f, 0.0f);
-            D3DXVECTOR3 Up(0.0f, 1.0f, 0.0f);
-            D3DMatrixLookAtLH(&m_ViewMatrix, &Eye, &At, &Up);
-            m_pViewVariableNoRef->SetMatrix((float*)&m_ViewMatrix);
-        }
-    }
-    if (SUCCEEDED(hr))
-    {
-        m_pDiffuseVariableNoRef = m_pShader->GetVariableByName("txDiffuse")->AsShaderResource();
-        hr = m_pDiffuseVariableNoRef ? S_OK : E_FAIL;
-    }
-    if (SUCCEEDED(hr))
-    {
-        m_pProjectionVariableNoRef = m_pShader->GetVariableByName("Projection")->AsMatrix();
-        hr = m_pProjectionVariableNoRef ? S_OK : E_FAIL;
-    }
+    // if (SUCCEEDED(hr))
+    // {
+    //     // Obtain the technique
+    //     m_pTechniqueNoRef = m_pShader->GetTechniqueByName("Render");
+    //     hr = m_pTechniqueNoRef ? S_OK : E_FAIL;
+    // }
+    // if (SUCCEEDED(hr))
+    // {
+    //     // Obtain the variables
+    //     m_pWorldVariableNoRef = m_pShader->GetVariableByName("World")->AsMatrix();
+    //     hr = m_pWorldVariableNoRef ? S_OK : E_FAIL;
+    // }
+    // if (SUCCEEDED(hr))
+    // {
+    //     m_pViewVariableNoRef = m_pShader->GetVariableByName("View")->AsMatrix();
+    //     hr = m_pViewVariableNoRef ? S_OK : E_FAIL;
+    // 
+    //     if (SUCCEEDED(hr))
+    //     {
+    //         // Initialize the view matrix.
+    //         D3DXVECTOR3 Eye(0.0f, 2.0f, -6.0f);
+    //         D3DXVECTOR3 At(0.0f, 0.0f, 0.0f);
+    //         D3DXVECTOR3 Up(0.0f, 1.0f, 0.0f);
+    //         D3DMatrixLookAtLH(&m_ViewMatrix, &Eye, &At, &Up);
+    //         m_pViewVariableNoRef->SetMatrix((float*)&m_ViewMatrix);
+    //     }
+    // }
+    // if (SUCCEEDED(hr))
+    // {
+    //     m_pDiffuseVariableNoRef = m_pShader->GetVariableByName("txDiffuse")->AsShaderResource();
+    //     hr = m_pDiffuseVariableNoRef ? S_OK : E_FAIL;
+    // }
+    // if (SUCCEEDED(hr))
+    // {
+    //     m_pProjectionVariableNoRef = m_pShader->GetVariableByName("Projection")->AsMatrix();
+    //     hr = m_pProjectionVariableNoRef ? S_OK : E_FAIL;
+    // }
     if (SUCCEEDED(hr))
     {
         // Define the input layout
         UINT numElements = ARRAYSIZE(s_InputLayout);
 
         // Create the input layout
-        D3D10_PASS_DESC PassDesc;
+        D3D11_PASS_DESC PassDesc;
         m_pTechniqueNoRef->GetPassByIndex(0)->GetDesc(&PassDesc);
 
         hr = m_pDevice->CreateInputLayout(
@@ -758,7 +765,7 @@ HRESULT DXGISampleApp::CreateD3DDeviceResources()
         if (SUCCEEDED(hr))
         {
             // Set the input layout
-            m_pDevice->IASetInputLayout(m_pVertexLayout);
+            m_pDeviceContext->IASetInputLayout(m_pVertexLayout);
         }
     }
 
@@ -1044,9 +1051,9 @@ HRESULT DXGISampleApp::OnRender()
 
         if (SUCCEEDED(hr))
         {
-            m_pDevice->ClearDepthStencilView(
+            m_pDeviceContext->ClearDepthStencilView(
                 m_pDepthStencilView,
-                D3D10_CLEAR_DEPTH,
+                D3D11_CLEAR_DEPTH,
                 1,
                 0
                 );
@@ -1087,12 +1094,12 @@ HRESULT DXGISampleApp::OnRender()
                 m_pWorldVariableNoRef->SetMatrix((float*)&m_WorldMatrix);
 
                 // Set the index buffer.
-                m_pDevice->IASetIndexBuffer(m_pFacesIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+                m_pDeviceContext->IASetIndexBuffer(m_pFacesIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
                 // Render the scene
                 m_pTechniqueNoRef->GetPassByIndex(0)->Apply(0);
 
-                m_pDevice->DrawIndexed(
+                m_pDeviceContext->DrawIndexed(
                     ARRAYSIZE(s_FacesIndexArray),
                     0,
                     0
@@ -1376,44 +1383,40 @@ LRESULT CALLBACK DXGISampleApp::WndProc(HWND hwnd, UINT message, WPARAM wParam, 
 *                                                                 *
 ******************************************************************/
 HRESULT DXGISampleApp::CreateD3DDevice(
-    IDXGIAdapter *pAdapter,
-    D3D10_DRIVER_TYPE driverType,
-    UINT flags,
-    ID3D10Device1 **ppDevice
-    )
+   IDXGIAdapter* pAdapter,
+   D3D_DRIVER_TYPE driverType,
+   UINT flags,
+   ID3D11Device** ppDevice,
+   ID3D11DeviceContext** ppDeviceContext
+)
 {
-    HRESULT hr = S_OK;
+   HRESULT hr = S_OK;
 
-    static const D3D10_FEATURE_LEVEL1 levelAttempts[] =
-    {
-        D3D10_FEATURE_LEVEL_10_0,
-        D3D10_FEATURE_LEVEL_9_3,
-        D3D10_FEATURE_LEVEL_9_2,
-        D3D10_FEATURE_LEVEL_9_1,
-    };
+   static const D3D_FEATURE_LEVEL levelAttempts[] =
+   {
+      // D3D_FEATURE_LEVEL_11_1,
+      D3D_FEATURE_LEVEL_11_0,
+      D3D_FEATURE_LEVEL_10_1,
+      D3D_FEATURE_LEVEL_10_0,
+      D3D_FEATURE_LEVEL_9_3,
+      D3D_FEATURE_LEVEL_9_2,
+      D3D_FEATURE_LEVEL_9_1,
+   };
 
-    for (UINT level = 0; level < ARRAYSIZE(levelAttempts); level++)
-    {
-        ID3D10Device1 *pDevice = NULL;
-        hr = D3D10CreateDevice1(
-            pAdapter,
-            driverType,
-            NULL,
-            flags,
-            levelAttempts[level],
-            D3D10_1_SDK_VERSION,
-            &pDevice
-            );
+   D3D_FEATURE_LEVEL feature_level = D3D_FEATURE_LEVEL_11_0;
 
-        if (SUCCEEDED(hr))
-        {
-            // transfer reference
-            *ppDevice = pDevice;
-            pDevice = NULL;
-            break;
-        }
-
-    }
+   hr = D3D11CreateDevice(
+      pAdapter,
+      driverType,
+      NULL,
+      flags,
+      levelAttempts,
+      sizeof(levelAttempts) / sizeof(D3D_FEATURE_LEVEL),
+      D3D11_SDK_VERSION,
+      ppDevice,
+      &feature_level,
+      ppDeviceContext
+   );
 
     return hr;
 }
@@ -1586,17 +1589,17 @@ HRESULT DXGISampleApp::LoadResourceBitmap(
 
 /******************************************************************
 *                                                                 *
-*  DXGISampleApp::LoadResourceShader                              *
+*  DXGISampleApp::LoadPixelShader                              *
 *                                                                 *
 *  This method loads and creates a pixel shader from a DLL        *
 *  resource                                                       *
 *                                                                 *
 ******************************************************************/
 
-HRESULT DXGISampleApp::LoadResourceShader(
-    ID3D10Device *pDevice,
+HRESULT DXGISampleApp::LoadPixelShader(
+    ID3D11Device *pDevice,
     PCWSTR pszResource,
-    ID3D10Effect **ppShader)
+   ID3D11PixelShader **ppShader)
 {
     HRESULT hr;
 
@@ -1615,12 +1618,10 @@ HRESULT DXGISampleApp::LoadResourceShader(
 
             if (SUCCEEDED(hr))
             {
-                hr = ::D3D10CreateEffectFromMemory(
+                hr = pDevice->CreatePixelShader(
                     pData,
                     ::SizeofResource(HINST_THISCOMPONENT, hResource),
                     0,
-                    pDevice,
-                    NULL,
                     ppShader
                     );
             }
