@@ -56,10 +56,10 @@ int WINAPI WinMain(
 
 /*static*/ const SimpleVertex DXGISampleApp::s_VertexArray[] =
 {
-    { D3DXVECTOR3( -1.0f, -1.0f, 1.0f ), D3DXVECTOR2( 1.0f, 1.0f )},
-    { D3DXVECTOR3(  1.0f, -1.0f, 1.0f ), D3DXVECTOR2( 0.0f, 1.0f )},
-    { D3DXVECTOR3(  1.0f,  1.0f, 1.0f ), D3DXVECTOR2( 0.0f, 0.0f )},
-    { D3DXVECTOR3( -1.0f,  1.0f, 1.0f ), D3DXVECTOR2( 1.0f, 0.0f )}
+    { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT2( 1.0f, 1.0f )},
+    { XMFLOAT3(  1.0f, -1.0f, 1.0f ), XMFLOAT2( 0.0f, 1.0f )},
+    { XMFLOAT3(  1.0f,  1.0f, 1.0f ), XMFLOAT2( 0.0f, 0.0f )},
+    { XMFLOAT3( -1.0f,  1.0f, 1.0f ), XMFLOAT2( 1.0f, 0.0f )}
 };
 
 /*static*/ const SHORT DXGISampleApp::s_FacesIndexArray[] =
@@ -729,9 +729,9 @@ HRESULT DXGISampleApp::CreateD3DDeviceResources()
     //     if (SUCCEEDED(hr))
     //     {
     //         // Initialize the view matrix.
-    //         D3DXVECTOR3 Eye(0.0f, 2.0f, -6.0f);
-    //         D3DXVECTOR3 At(0.0f, 0.0f, 0.0f);
-    //         D3DXVECTOR3 Up(0.0f, 1.0f, 0.0f);
+    //         XMFLOAT3  Eye(0.0f, 2.0f, -6.0f);
+    //         XMFLOAT3  At(0.0f, 0.0f, 0.0f);
+    //         XMFLOAT3  Up(0.0f, 1.0f, 0.0f);
     //         D3DMatrixLookAtLH(&m_ViewMatrix, &Eye, &At, &Up);
     //         m_pViewVariableNoRef->SetMatrix((float*)&m_ViewMatrix);
     //     }

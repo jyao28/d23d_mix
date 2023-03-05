@@ -32,6 +32,7 @@
 #include <wchar.h>
 
 #include <d3d11.h>
+#include <directxmath.h>
 #include <d3dx10math.h>
 #include <d2d1.h>
 #include <d2d1helper.h>
@@ -82,8 +83,8 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 struct SimpleVertex
 {
-    D3DXVECTOR3 Pos;
-    D3DXVECTOR2 Tex;
+    XMFLOAT3 Pos;
+    XMFLOAT2 Tex;
 };
 
 /******************************************************************
