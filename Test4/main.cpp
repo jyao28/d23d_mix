@@ -278,6 +278,12 @@ void d3d11_engine::create_texture2d(std::string image_file, D3D11_USAGE usage, U
 
 }
 
+void d3d11_engine::create_texture2d()
+{
+   create_texture2d("testTexture.png", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0);
+   // create_texture2d("d2d_image.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0);
+}
+
 // Load Image
 ID3D11Texture2D* d3d11_engine::load_image(std::string image_file)
 {

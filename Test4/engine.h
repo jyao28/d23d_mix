@@ -84,10 +84,7 @@ public:
 
    void create_texture2d(std::string image_file, D3D11_USAGE usage, UINT bind_flags, UINT misc_flags);
 
-   void create_texture2d()
-   {
-      create_texture2d("testTexture.png", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0);
-   }
+   void create_texture2d();
 
 
 
