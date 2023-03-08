@@ -86,42 +86,56 @@ void d3d11_engine::setup_debug_layer()
 void d3d11_engine::create_swap_chain(HWND hwnd)
 {
    // Get DXGI Factory (needed to create Swap Chain)
-   IDXGIFactory2* dxgiFactory = nullptr;
-   {
-      IDXGIDevice1* dxgiDevice;
-      HRESULT hResult = device->QueryInterface(__uuidof(IDXGIDevice1), (void**)&dxgiDevice);
-      assert(SUCCEEDED(hResult));
+   IDXGIFactory* dxgiFactory = nullptr;
+   // {
+   //    IDXGIDevice* dxgiDevice;
+   //    HRESULT hResult = device->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice);
+   //    assert(SUCCEEDED(hResult));
+   // 
+   //    IDXGIAdapter* dxgiAdapter;
+   //    hResult = dxgiDevice->GetAdapter(&dxgiAdapter);
+   //    assert(SUCCEEDED(hResult));
+   //    dxgiDevice->Release();
+   // 
+   //    DXGI_ADAPTER_DESC adapterDesc;
+   //    dxgiAdapter->GetDesc(&adapterDesc);
+   // 
+   //    OutputDebugStringA("Graphics Device: ");
+   //    OutputDebugStringW(adapterDesc.Description);
+   // 
+   //    hResult = dxgiAdapter->GetParent(__uuidof(IDXGIFactory), (void**)&dxgiFactory);
+   //    assert(SUCCEEDED(hResult));
+   //    dxgiAdapter->Release();
+   // }
+   AssertHResult(CreateDXGIFactory(__uuidof(IDXGIFactory), (void**)&dxgiFactory), "Failed to create factory");
 
-      IDXGIAdapter* dxgiAdapter;
-      hResult = dxgiDevice->GetAdapter(&dxgiAdapter);
-      assert(SUCCEEDED(hResult));
-      dxgiDevice->Release();
 
-      DXGI_ADAPTER_DESC adapterDesc;
-      dxgiAdapter->GetDesc(&adapterDesc);
-
-      OutputDebugStringA("Graphics Device: ");
-      OutputDebugStringW(adapterDesc.Description);
-
-      hResult = dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), (void**)&dxgiFactory);
-      assert(SUCCEEDED(hResult));
-      dxgiAdapter->Release();
-   }
-
-   DXGI_SWAP_CHAIN_DESC1 d3d11SwapChainDesc = {};
-   d3d11SwapChainDesc.Width = 0; // use window width
-   d3d11SwapChainDesc.Height = 0; // use window height
-   d3d11SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+   DXGI_SWAP_CHAIN_DESC d3d11SwapChainDesc = {};
+   // d3d11SwapChainDesc.Width = 0; // use window width
+   // d3d11SwapChainDesc.Height = 0; // use window height
+   // d3d11SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+   d3d11SwapChainDesc.BufferDesc.Width = 0; // use window width
+   d3d11SwapChainDesc.BufferDesc.Height = 0; // use window width
+   d3d11SwapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
+   d3d11SwapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
+   d3d11SwapChainDesc.BufferDesc.Format= DXGI_FORMAT_B8G8R8A8_UNORM;
+   d3d11SwapChainDesc.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+   d3d11SwapChainDesc.BufferDesc.Scaling = DXGI_MODE_SCALING_STRETCHED;
    d3d11SwapChainDesc.SampleDesc.Count = 1;
    d3d11SwapChainDesc.SampleDesc.Quality = 0;
    d3d11SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
    d3d11SwapChainDesc.BufferCount = 2;
-   d3d11SwapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+   d3d11SwapChainDesc.OutputWindow = hwnd;
+   d3d11SwapChainDesc.Windowed = TRUE;
+   // d3d11SwapChainDesc.Scaling = DXGI_SCALING_STRETCH;
    d3d11SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-   d3d11SwapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+   // d3d11SwapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
    d3d11SwapChainDesc.Flags = 0;
+   d3d11SwapChainDesc.BufferCount = 2;
+   d3d11SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+   d3d11SwapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
-   HRESULT hResult = dxgiFactory->CreateSwapChainForHwnd(device, hwnd, &d3d11SwapChainDesc, 0, 0, &swap_chain);
+   HRESULT hResult = dxgiFactory->CreateSwapChain(device, &d3d11SwapChainDesc, &swap_chain);
    assert(SUCCEEDED(hResult));
 
    dxgiFactory->Release();
@@ -351,7 +365,7 @@ void d3d11_engine::resize()
    device_context->OMSetRenderTargets(0, 0, 0);
    render_target_view->Release();
 
-   HRESULT res = swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
+   HRESULT res = swap_chain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE);
    assert(SUCCEEDED(res));
 
    ID3D11Texture2D* d3d11FrameBuffer;
@@ -421,8 +435,8 @@ void d2d1_engine::init(HWND hwnd)
 #ifdef _DEBUG
    d3d_coinst.setup_debug_layer();
 #endif
-   d3d_coinst.create_swap_chain(hwnd);
-   d3d_coinst.create_render_target_view();
+   //d3d_coinst.create_swap_chain(hwnd);
+   //d3d_coinst.create_render_target_view();
    //d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_IMMUTABLE, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
    d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET, D3D11_RESOURCE_MISC_SHARED);
 

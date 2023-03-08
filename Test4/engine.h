@@ -8,6 +8,7 @@
 #pragma comment(lib, "d3d11.lib")
 #include <d3dcompiler.h>
 #pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "dxgi.lib")
 
 #include <d2d1.h>
 #include <d2d1_1.h>
@@ -27,9 +28,9 @@ class d2d1_engine;
 class d3d11_engine
 {
 private:
-   ID3D11Device1* device;
-   ID3D11DeviceContext1* device_context;
-   IDXGISwapChain1* swap_chain;
+   ID3D11Device* device;
+   ID3D11DeviceContext* device_context;
+   IDXGISwapChain* swap_chain;
    ID3D11Debug* d3dDebug = nullptr;
    ID3D11RenderTargetView* render_target_view;
    ID3DBlob* vsBlob = nullptr;
