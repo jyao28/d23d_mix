@@ -5,9 +5,17 @@
 
 #include <windows.h>
 #include <d3d11_1.h>
-#pragma comment(lib, "d3d11.lib")
 #include <d3dcompiler.h>
+
+#include <dxgi1_6.h>
+#include <stddef.h>
+
+#pragma comment (lib, "user32.lib")
+#pragma comment (lib, "dxgi.lib")
+#pragma comment (lib, "d3d11.lib")
+#pragma comment (lib, "dxguid.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+
 
 #include <d2d1.h>
 #include <d2d1_1.h>
@@ -22,29 +30,35 @@
 
 void AssertHResult(HRESULT hr, std::string&& errorMsg);
 
+#define SAFE_RELEASE(obj) if (obj) obj->Release()
+
 class d2d1_engine;
 
 class d3d11_engine
 {
 private:
-   ID3D11Device1* device;
-   ID3D11DeviceContext1* device_context;
-   IDXGISwapChain1* swap_chain;
-   ID3D11Debug* d3dDebug = nullptr;
-   ID3D11RenderTargetView* render_target_view;
-   ID3DBlob* vsBlob = nullptr;
-   ID3D11VertexShader* vertexShader = nullptr;
-   ID3D11PixelShader* pixelShader = nullptr;
-   ID3D11InputLayout* inputLayout = nullptr;
-   ID3D11Buffer* vertexBuffer;
-   UINT numVerts;
-   UINT stride;
-   UINT offset;
-   ID3D11SamplerState* samplerState = nullptr;
-   ID3D11Texture2D* texture = nullptr;
-   ID3D11ShaderResourceView* textureView = nullptr;
+   ID3D11Device* device{ nullptr };
+   ID3D11DeviceContext* device_context{ nullptr };
+   ID3D11DeviceContext1* device_context1{ nullptr };
+   IDXGISwapChain* swap_chain{ nullptr };
+   ID3D11Debug* d3dDebug{ nullptr };
+   ID3D11RenderTargetView* render_target_view{ nullptr };
+   ID3D11VertexShader* vertexShader{ nullptr };
+   ID3D11PixelShader* pixelShader{ nullptr };
+   ID3D11InputLayout* inputLayout{ nullptr };
+   ID3D11Buffer* vertexBuffer{ nullptr };
+   UINT numVerts{ 0 };
+   UINT stride{ 0 };
+   UINT offset{ 0 };
+   ID3D11SamplerState* samplerState{ nullptr };
+   ID3D11Texture2D* texture{ nullptr };
+   ID3D11ShaderResourceView* textureView{ nullptr };
+
+   HANDLE render_frame_latency_wait{ NULL };
 
 public:
+
+   ~d3d11_engine();
 
    // Get methods
    auto get_texture2d()->ID3D11Texture2D* { return texture; }
@@ -68,9 +82,6 @@ public:
 
    // Create Pixel Shader
    HRESULT create_pixel_shader();
-
-   // Create Input Layout
-   void create_input_layout();
 
    // Create Vertex Buffer
    void create_vertex_buffer();
@@ -110,12 +121,15 @@ class d2d1_engine
 {
 private:
    d3d11_engine d3d_coinst;
+   HANDLE resourceHandle{ nullptr };
 
 public:
 
    void init(HWND hwnd);
 
    auto get_texture2d() -> ID3D11Texture2D* { return d3d_coinst.get_texture2d(); }
-
+   HANDLE get_sharedhandle() {
+      return resourceHandle;
+   }
 };
 

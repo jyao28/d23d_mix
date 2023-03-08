@@ -13,6 +13,8 @@
 #include <d2d1_1.h>
 // #include <wrl.h>
 
+#include <dxgi1_6.h>
+
 #include <string>
 
 #include <assert.h>
@@ -34,7 +36,7 @@ UINT32 d3d11_engine::create_device_and_context()
    ID3D11Device* baseDevice = nullptr;
    ID3D11DeviceContext* baseDeviceContext = nullptr;
    D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
-   UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+   UINT creationFlags = D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 #if defined(_DEBUG)
    creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
@@ -46,22 +48,21 @@ UINT32 d3d11_engine::create_device_and_context()
       featureLevels,
       ARRAYSIZE(featureLevels),
       D3D11_SDK_VERSION,
-      &baseDevice,
+      &device,
       0,
-      &baseDeviceContext);
+      &device_context);
    if (FAILED(hResult)) {
       MessageBoxA(0, "D3D11CreateDevice() failed", "Fatal Error", MB_OK);
       return GetLastError();
    }
 
-   // Get 1.1 interface of D3D11 Device and Context
-   hResult = baseDevice->QueryInterface(__uuidof(ID3D11Device1), (void**)&device);
-   assert(SUCCEEDED(hResult));
-   baseDevice->Release();
+   // hResult = baseDeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&device_context1);
+   // if (SUCCEEDED(hResult))
+   // {
+   //    device_context->Release();
+   //    device_context = (ID3D11DeviceContext*)device_context1;
+   // }
 
-   hResult = baseDeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&device_context);
-   assert(SUCCEEDED(hResult));
-   baseDeviceContext->Release();
    return 0;
 }
 
@@ -85,46 +86,69 @@ void d3d11_engine::setup_debug_layer()
 // Create Swap Chain
 void d3d11_engine::create_swap_chain(HWND hwnd)
 {
-   // Get DXGI Factory (needed to create Swap Chain)
-   IDXGIFactory2* dxgiFactory = nullptr;
+   IDXGIFactory* factory{ nullptr };
+
+   AssertHResult(CreateDXGIFactory(IID_IDXGIFactory, (void**)&factory), "Failed to create factory");
+
+   HRESULT hr{ S_OK };
+
+   DXGI_SWAP_CHAIN_DESC desc{};
+   desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+   desc.BufferDesc.RefreshRate.Numerator = 60;
+   desc.BufferDesc.RefreshRate.Denominator = 1;
+
+#if WINDOW_MSAA
+   desc.SampleDesc.Count = WINDOW_MSAA;
+#else
+   desc.SampleDesc.Count = 1;
+#endif
+   desc.SampleDesc.Quality = 0;
+   desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+   desc.OutputWindow = hwnd;
+   desc.Windowed = TRUE;
+
+#if !WINDOW_SRGB && !WINDOW_MSAA
+   // Windows 10 and up
+   desc.BufferCount = 2;
+   desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+   desc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+   if (FAILED(factory->CreateSwapChain((IUnknown*)device, &desc, &swap_chain)))
    {
-      IDXGIDevice1* dxgiDevice;
-      HRESULT hResult = device->QueryInterface(__uuidof(IDXGIDevice1), (void**)&dxgiDevice);
-      assert(SUCCEEDED(hResult));
-
-      IDXGIAdapter* dxgiAdapter;
-      hResult = dxgiDevice->GetAdapter(&dxgiAdapter);
-      assert(SUCCEEDED(hResult));
-      dxgiDevice->Release();
-
-      DXGI_ADAPTER_DESC adapterDesc;
-      dxgiAdapter->GetDesc(&adapterDesc);
-
-      OutputDebugStringA("Graphics Device: ");
-      OutputDebugStringW(adapterDesc.Description);
-
-      hResult = dxgiAdapter->GetParent(__uuidof(IDXGIFactory2), (void**)&dxgiFactory);
-      assert(SUCCEEDED(hResult));
-      dxgiAdapter->Release();
+      // Windows 8.1
+      desc.BufferCount = 2;
+      desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+      desc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+      hr = factory->CreateSwapChain((IUnknown*)device, &desc, &swap_chain);
+   }
+#else
+   hr = E_FAIL;
+#endif
+   if (FAILED(hr))
+   {
+      // older Windows
+      desc.BufferCount = 1;
+      desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+      desc.Flags = 0;
+      hr = factory->CreateSwapChain((IUnknown*)device, &desc, &swap_chain);
+      AssertHResult(hr, "IDXGIFactory::CreateSwapChain failed");
    }
 
-   DXGI_SWAP_CHAIN_DESC1 d3d11SwapChainDesc = {};
-   d3d11SwapChainDesc.Width = 0; // use window width
-   d3d11SwapChainDesc.Height = 0; // use window height
-   d3d11SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-   d3d11SwapChainDesc.SampleDesc.Count = 1;
-   d3d11SwapChainDesc.SampleDesc.Quality = 0;
-   d3d11SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-   d3d11SwapChainDesc.BufferCount = 2;
-   d3d11SwapChainDesc.Scaling = DXGI_SCALING_STRETCH;
-   d3d11SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-   d3d11SwapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-   d3d11SwapChainDesc.Flags = 0;
+   if (desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT)
+   {
+      IDXGISwapChain2* swapchain2;
+      if (SUCCEEDED(hr = swap_chain->QueryInterface(_uuidof(IDXGISwapChain2), (void**)&swapchain2)))
+      {
+         // using IDXGISwapChain2 for frame latency control
+         render_frame_latency_wait = swapchain2->GetFrameLatencyWaitableObject();
+         swapchain2->Release();
+      }
+   }
 
-   HRESULT hResult = dxgiFactory->CreateSwapChainForHwnd(device, hwnd, &d3d11SwapChainDesc, 0, 0, &swap_chain);
-   assert(SUCCEEDED(hResult));
+   hr = factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER);
+   AssertHResult(hr, "IDXGIFactory::MakeWindowAssociation failed");
 
-   dxgiFactory->Release();
+   factory->Release();
+
 }
 
 // Create render target view
@@ -142,6 +166,7 @@ void d3d11_engine::create_render_target_view()
 // Create Vertex Shader
 HRESULT d3d11_engine::create_vertex_shader()
 {
+   ID3DBlob* vsBlob{ nullptr };
    ID3DBlob* shaderCompileErrorsBlob = nullptr;
    HRESULT hResult = D3DCompileFromFile(L"shaders.hlsl", nullptr, nullptr, "vs_main", "vs_5_0", 0, 0, &vsBlob, &shaderCompileErrorsBlob);
    if (FAILED(hResult))
@@ -159,6 +184,17 @@ HRESULT d3d11_engine::create_vertex_shader()
 
    hResult = device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &vertexShader);
    assert(SUCCEEDED(hResult));
+
+   D3D11_INPUT_ELEMENT_DESC inputElementDesc[] =
+   {
+         { "POS", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+         { "TEX", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+   };
+
+   hResult = device->CreateInputLayout(inputElementDesc, ARRAYSIZE(inputElementDesc), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &inputLayout);
+   assert(SUCCEEDED(hResult));
+   vsBlob->Release();
+
    return hResult;
 }
 
@@ -187,19 +223,6 @@ HRESULT d3d11_engine::create_pixel_shader()
    return hResult;
 }
 
-// Create Input Layout
-void d3d11_engine::create_input_layout()
-{
-   D3D11_INPUT_ELEMENT_DESC inputElementDesc[] =
-   {
-         { "POS", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-         { "TEX", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-   };
-
-   HRESULT hResult = device->CreateInputLayout(inputElementDesc, ARRAYSIZE(inputElementDesc), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &inputLayout);
-   assert(SUCCEEDED(hResult));
-   vsBlob->Release();
-}
 
 // Create Vertex Buffer
 void d3d11_engine::create_vertex_buffer()
@@ -247,7 +270,7 @@ void d3d11_engine::create_sampler_state()
 
 void d3d11_engine::create_texture2d(std::string image_file, D3D11_USAGE usage, UINT bind_flags, UINT misc_flags)
 {
-   
+
    if (usage == D3D11_USAGE_IMMUTABLE)
    {
       texture = load_image(image_file);
@@ -376,7 +399,6 @@ void d3d11_engine::init(HWND hwnd)
       exit(1);
    if (create_pixel_shader() != S_OK)
       exit(1);
-   create_input_layout();
    create_vertex_buffer();
    create_sampler_state();
    create_texture2d();
@@ -384,14 +406,7 @@ void d3d11_engine::init(HWND hwnd)
 
 void d3d11_engine::update_image(d2d1_engine& d2d)
 {
-   IDXGISurface* surface = nullptr;
-   AssertHResult(d2d.get_texture2d()->QueryInterface(__uuidof(IDXGISurface), (void**)(&surface)), "Failed to get surface");
-
-   IDXGIResource* dxgiResource = nullptr;
-   AssertHResult(surface->QueryInterface(__uuidof(IDXGIResource), (void**)&dxgiResource), "Failed to get dxgi resource");
-
-   HANDLE resourceHandle = nullptr;
-   AssertHResult(dxgiResource->GetSharedHandle(&resourceHandle), "Failed to get dxgi resource handle");
+   HANDLE resourceHandle = d2d.get_sharedhandle();
 
    ID3D11Texture2D* d2d_texture = nullptr;
    AssertHResult(device->OpenSharedResource(resourceHandle, __uuidof(ID3D11Texture2D), (void**)&d2d_texture), "Failed to open shared resource");
@@ -404,14 +419,38 @@ void d3d11_engine::update_image(d2d1_engine& d2d)
 
    D3D11_BOX d3dBox = { 0, 0, 0, d2dTextureDesc.Width, d2dTextureDesc.Height, 1 };
    device_context->CopySubresourceRegion(texture, 0, (d3dTextureDesc.Width - d2dTextureDesc.Width) / 2, (d3dTextureDesc.Height - d2dTextureDesc.Height) / 2, 0, d2d_texture, 0, &d3dBox);
-   //device_context->CopySubresourceRegion(texture, 0, 0, 0, 0, d2d_texture, 0, &d3dBox);
 
    d2d_texture->Release();
-   dxgiResource->Release();
-   surface->Release();
 
 }
 
+d3d11_engine::~d3d11_engine()
+{
+   if (device_context)
+   {
+      device_context->ClearState();
+   }
+
+   SAFE_RELEASE(vertexBuffer);
+   SAFE_RELEASE(inputLayout);
+   SAFE_RELEASE(vertexShader);
+   SAFE_RELEASE(pixelShader);
+   SAFE_RELEASE(samplerState);
+   SAFE_RELEASE(texture);
+   SAFE_RELEASE(textureView);
+
+#if WINDOW_DEPTH || WINDOW_STENCIL
+   SAFE_RELEASE(render_window_dpview);
+#endif
+   SAFE_RELEASE(render_target_view);
+   SAFE_RELEASE(swap_chain);
+   SAFE_RELEASE(device_context);
+   SAFE_RELEASE(device);
+
+   // render_context1 = NULL;
+   // render_frame_latency_wait = NULL;
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -425,6 +464,17 @@ void d2d1_engine::init(HWND hwnd)
    d3d_coinst.create_render_target_view();
    //d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_IMMUTABLE, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
    d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET, D3D11_RESOURCE_MISC_SHARED);
+
+   IDXGISurface* surface = nullptr;
+   AssertHResult(get_texture2d()->QueryInterface(__uuidof(IDXGISurface), (void**)(&surface)), "Failed to get surface");
+
+   IDXGIResource* dxgiResource = nullptr;
+   AssertHResult(surface->QueryInterface(__uuidof(IDXGIResource), (void**)&dxgiResource), "Failed to get dxgi resource");
+
+   AssertHResult(dxgiResource->GetSharedHandle(&resourceHandle), "Failed to get dxgi resource handle");
+
+   dxgiResource->Release();
+   surface->Release();
 
 }
 
