@@ -462,17 +462,20 @@ void d2d1_engine::init(HWND hwnd)
    d3d_coinst.create_render_target_view();
    //d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_IMMUTABLE, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
    d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET, D3D11_RESOURCE_MISC_SHARED);
+   d3d_coinst.device_context->Flush();
 
-   IDXGISurface* surface = nullptr;
-   AssertHResult(get_texture2d()->QueryInterface(__uuidof(IDXGISurface), (void**)(&surface)), "Failed to get surface");
+   {
+      IDXGISurface* surface = nullptr;
+      AssertHResult(get_texture2d()->QueryInterface(__uuidof(IDXGISurface), (void**)(&surface)), "Failed to get surface");
 
-   IDXGIResource* dxgiResource = nullptr;
-   AssertHResult(surface->QueryInterface(__uuidof(IDXGIResource), (void**)&dxgiResource), "Failed to get dxgi resource");
+      IDXGIResource* dxgiResource = nullptr;
+      AssertHResult(surface->QueryInterface(__uuidof(IDXGIResource), (void**)&dxgiResource), "Failed to get dxgi resource");
 
-   AssertHResult(dxgiResource->GetSharedHandle(&resourceHandle), "Failed to get dxgi resource handle");
+      AssertHResult(dxgiResource->GetSharedHandle(&resourceHandle), "Failed to get dxgi resource handle");
 
-   dxgiResource->Release();
-   surface->Release();
+      dxgiResource->Release();
+      surface->Release();
+   }
 
 }
 

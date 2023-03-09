@@ -57,6 +57,8 @@ private:
 
    HANDLE render_frame_latency_wait{ NULL };
 
+   friend class d2d1_engine;
+
 public:
 
    ~d3d11_engine();
