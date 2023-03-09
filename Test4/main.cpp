@@ -404,6 +404,7 @@ void d3d11_engine::update_image(d2d1_engine& d2d)
       HANDLE resourceHandle = d2d.shared_handle();
 
       AssertHResult(device->OpenSharedResource(resourceHandle, __uuidof(ID3D11Texture2D), (void**)&shared_texture), "Failed to open shared resource");
+      device_context->Flush();
    }
 
    D3D11_TEXTURE2D_DESC d2dTextureDesc;
