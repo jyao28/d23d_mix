@@ -42,8 +42,11 @@ private:
    UINT offset;
    ID3D11SamplerState* samplerState = nullptr;
    ID3D11Texture2D* texture = nullptr;
+   ID3D11Texture2D* shared_texture = nullptr;
    ID3D11ShaderResourceView* textureView = nullptr;
 
+
+   friend class d2d1_engine;
 public:
 
    // Get methods
@@ -110,12 +113,17 @@ class d2d1_engine
 {
 private:
    d3d11_engine d3d_coinst;
+   HANDLE shared_resource_handle = nullptr;
 
 public:
 
    void init(HWND hwnd);
 
    auto get_texture2d() -> ID3D11Texture2D* { return d3d_coinst.get_texture2d(); }
+
+   HANDLE shared_handle() {
+      return shared_resource_handle;
+   }
 
 };
 

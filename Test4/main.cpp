@@ -33,7 +33,7 @@ UINT32 d3d11_engine::create_device_and_context()
 {
    ID3D11Device* baseDevice = nullptr;
    ID3D11DeviceContext* baseDeviceContext = nullptr;
-   D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
+   D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
    UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 #if defined(_DEBUG)
    creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -280,7 +280,7 @@ void d3d11_engine::create_texture2d(std::string image_file, D3D11_USAGE usage, U
 
 void d3d11_engine::create_texture2d()
 {
-   create_texture2d("testTexture.png", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0);
+   create_texture2d("testTexture.png", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
    // create_texture2d("d2d_image.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0);
 }
 
@@ -313,8 +313,6 @@ ID3D11Texture2D* d3d11_engine::load_image(std::string image_file)
    textureSubresourceData.SysMemPitch = texBytesPerRow;
 
    AssertHResult(device->CreateTexture2D(&textureDesc, &textureSubresourceData, &image), "Fail to create texture");
-
-   // AssertHResult(device->CreateShaderResourceView(texture, nullptr, &textureView), "Fail to create SRV");
 
    free(testTextureBytes);
 
@@ -384,31 +382,24 @@ void d3d11_engine::init(HWND hwnd)
 
 void d3d11_engine::update_image(d2d1_engine& d2d)
 {
-   IDXGISurface* surface = nullptr;
-   AssertHResult(d2d.get_texture2d()->QueryInterface(__uuidof(IDXGISurface), (void**)(&surface)), "Failed to get surface");
 
-   IDXGIResource* dxgiResource = nullptr;
-   AssertHResult(surface->QueryInterface(__uuidof(IDXGIResource), (void**)&dxgiResource), "Failed to get dxgi resource");
+   if (!shared_texture)
+   {
+      HANDLE resourceHandle = d2d.shared_handle();
 
-   HANDLE resourceHandle = nullptr;
-   AssertHResult(dxgiResource->GetSharedHandle(&resourceHandle), "Failed to get dxgi resource handle");
-
-   ID3D11Texture2D* d2d_texture = nullptr;
-   AssertHResult(device->OpenSharedResource(resourceHandle, __uuidof(ID3D11Texture2D), (void**)&d2d_texture), "Failed to open shared resource");
+      AssertHResult(device->OpenSharedResource(resourceHandle, __uuidof(ID3D11Texture2D), (void**)&shared_texture), "Failed to open shared resource");
+   }
 
    D3D11_TEXTURE2D_DESC d2dTextureDesc;
    D3D11_TEXTURE2D_DESC d3dTextureDesc;
 
-   d2d_texture->GetDesc(&d2dTextureDesc);
+   shared_texture->GetDesc(&d2dTextureDesc);
    texture->GetDesc(&d3dTextureDesc);
 
    D3D11_BOX d3dBox = { 0, 0, 0, d2dTextureDesc.Width, d2dTextureDesc.Height, 1 };
-   device_context->CopySubresourceRegion(texture, 0, (d3dTextureDesc.Width - d2dTextureDesc.Width) / 2, (d3dTextureDesc.Height - d2dTextureDesc.Height) / 2, 0, d2d_texture, 0, &d3dBox);
-   //device_context->CopySubresourceRegion(texture, 0, 0, 0, 0, d2d_texture, 0, &d3dBox);
 
-   d2d_texture->Release();
-   dxgiResource->Release();
-   surface->Release();
+   device_context->CopySubresourceRegion(texture, 0, (d3dTextureDesc.Width - d2dTextureDesc.Width) / 2, (d3dTextureDesc.Height - d2dTextureDesc.Height) / 2, 0, shared_texture, 0, &d3dBox);
+   //device_context->CopySubresourceRegion(texture, 0, 0, 0, 0, d2d_texture, 0, &d3dBox);
 
 }
 
@@ -423,8 +414,24 @@ void d2d1_engine::init(HWND hwnd)
 #endif
    d3d_coinst.create_swap_chain(hwnd);
    d3d_coinst.create_render_target_view();
+
    //d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_IMMUTABLE, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
    d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET, D3D11_RESOURCE_MISC_SHARED);
+
+   d3d_coinst.device_context->Flush();
+
+   {
+      IDXGISurface* surface = nullptr;
+      AssertHResult(get_texture2d()->QueryInterface(__uuidof(IDXGISurface), (void**)(&surface)), "Failed to get surface");
+
+      IDXGIResource* dxgiResource = nullptr;
+      AssertHResult(surface->QueryInterface(__uuidof(IDXGIResource), (void**)&dxgiResource), "Failed to get dxgi resource");
+
+      AssertHResult(dxgiResource->GetSharedHandle(&shared_resource_handle), "Failed to get dxgi resource handle");
+
+      dxgiResource->Release();
+      surface->Release();
+   }
 
 }
 
