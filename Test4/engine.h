@@ -45,6 +45,8 @@ private:
    ID3D11Texture2D* shared_texture = nullptr;
    ID3D11ShaderResourceView* textureView = nullptr;
 
+
+   friend class d2d1_engine;
 public:
 
    // Get methods
