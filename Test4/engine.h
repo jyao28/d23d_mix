@@ -52,6 +52,7 @@ private:
    UINT offset{ 0 };
    ID3D11SamplerState* samplerState{ nullptr };
    ID3D11Texture2D* texture{ nullptr };
+   ID3D11Texture2D* shared_texture{ nullptr };
    ID3D11ShaderResourceView* textureView{ nullptr };
 
    HANDLE render_frame_latency_wait{ NULL };

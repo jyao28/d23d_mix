@@ -33,9 +33,7 @@ void AssertHResult(HRESULT hr, std::string&& errorMsg)
 // Create D3D11 Device and Context
 UINT32 d3d11_engine::create_device_and_context()
 {
-   ID3D11Device* baseDevice = nullptr;
-   ID3D11DeviceContext* baseDeviceContext = nullptr;
-   D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
+   D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
    UINT creationFlags = D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 #if defined(_DEBUG)
    creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
@@ -56,12 +54,12 @@ UINT32 d3d11_engine::create_device_and_context()
       return GetLastError();
    }
 
-   // hResult = baseDeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&device_context1);
-   // if (SUCCEEDED(hResult))
-   // {
-   //    device_context->Release();
-   //    device_context = (ID3D11DeviceContext*)device_context1;
-   // }
+   hResult = device_context->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&device_context1);
+   if (SUCCEEDED(hResult))
+   {
+      device_context->Release();
+      device_context = (ID3D11DeviceContext*)device_context1;
+   }
 
    return 0;
 }
@@ -406,21 +404,21 @@ void d3d11_engine::init(HWND hwnd)
 
 void d3d11_engine::update_image(d2d1_engine& d2d)
 {
-   HANDLE resourceHandle = d2d.get_sharedhandle();
+   if (!shared_texture)
+   {
+      HANDLE resourceHandle = d2d.get_sharedhandle();
 
-   ID3D11Texture2D* d2d_texture = nullptr;
-   AssertHResult(device->OpenSharedResource(resourceHandle, __uuidof(ID3D11Texture2D), (void**)&d2d_texture), "Failed to open shared resource");
+      AssertHResult(device->OpenSharedResource(resourceHandle, __uuidof(ID3D11Texture2D), (void**)&shared_texture), "Failed to open shared resource");
+   }
 
    D3D11_TEXTURE2D_DESC d2dTextureDesc;
    D3D11_TEXTURE2D_DESC d3dTextureDesc;
 
-   d2d_texture->GetDesc(&d2dTextureDesc);
+   shared_texture->GetDesc(&d2dTextureDesc);
    texture->GetDesc(&d3dTextureDesc);
 
    D3D11_BOX d3dBox = { 0, 0, 0, d2dTextureDesc.Width, d2dTextureDesc.Height, 1 };
-   device_context->CopySubresourceRegion(texture, 0, (d3dTextureDesc.Width - d2dTextureDesc.Width) / 2, (d3dTextureDesc.Height - d2dTextureDesc.Height) / 2, 0, d2d_texture, 0, &d3dBox);
-
-   d2d_texture->Release();
+   device_context->CopySubresourceRegion(texture, 0, (d3dTextureDesc.Width - d2dTextureDesc.Width) / 2, (d3dTextureDesc.Height - d2dTextureDesc.Height) / 2, 0, shared_texture, 0, &d3dBox);
 
 }
 
