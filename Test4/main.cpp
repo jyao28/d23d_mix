@@ -108,21 +108,36 @@ void d3d11_engine::create_swap_chain(HWND hwnd)
       dxgiAdapter->Release();
    }
 
-   DXGI_SWAP_CHAIN_DESC1 d3d11SwapChainDesc = {};
+   
+   DXGI_SWAP_CHAIN_DESC1 d3d11SwapChainDesc{};
    d3d11SwapChainDesc.Width = 0; // use window width
    d3d11SwapChainDesc.Height = 0; // use window height
    d3d11SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
    d3d11SwapChainDesc.SampleDesc.Count = 1;
    d3d11SwapChainDesc.SampleDesc.Quality = 0;
-   d3d11SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+   d3d11SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | D3D11_BIND_RENDER_TARGET;
    d3d11SwapChainDesc.BufferCount = 2;
    d3d11SwapChainDesc.Scaling = DXGI_SCALING_STRETCH;
-   d3d11SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+   d3d11SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
    d3d11SwapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
    d3d11SwapChainDesc.Flags = 0;
 
-   HRESULT hResult = dxgiFactory->CreateSwapChainForHwnd(device, hwnd, &d3d11SwapChainDesc, 0, 0, &swap_chain);
+   AssertHResult(dxgiFactory->CreateSwapChainForHwnd(device, hwnd, &d3d11SwapChainDesc, 0, 0, &swap_chain), "Failed to create swap chain");
+
+#if 0
+   DXGI_SWAP_CHAIN_DESC desc{};
+   desc.Windowed = TRUE; // Sets the initial state of full-screen mode.
+   desc.BufferCount = 2;
+   desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+   desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+   desc.SampleDesc.Count = 1;      //multisampling setting
+   desc.SampleDesc.Quality = 0;    //vendor-specific flag
+   desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+   desc.OutputWindow = hwnd;
+
+   HRESULT hResult = dxgiFactory->CreateSwapChain(device, &desc, &swap_chain);
    assert(SUCCEEDED(hResult));
+#endif
 
    dxgiFactory->Release();
 }
@@ -271,7 +286,7 @@ void d3d11_engine::create_texture2d(std::string image_file, D3D11_USAGE usage, U
       image->Release();
    }
 
-   if (bind_flags & D3D11_BIND_SHADER_RESOURCE)
+   if (bind_flags & D3D11_BIND_SHADER_RESOURCE && swap_chain)
    {
       AssertHResult(device->CreateShaderResourceView(texture, nullptr, &textureView), "Fail to create SRV");
    }
@@ -323,12 +338,13 @@ ID3D11Texture2D* d3d11_engine::load_image(std::string image_file)
 
 void d3d11_engine::draw(D3D11_VIEWPORT& viewport)
 {
-   FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
-   device_context->ClearRenderTargetView(render_target_view, backgroundColor);
 
    device_context->RSSetViewports(1, &viewport);
 
    device_context->OMSetRenderTargets(1, &render_target_view, nullptr);
+
+   FLOAT backgroundColor[4] = { 0.1f, 0.2f, 0.6f, 1.0f };
+   device_context->ClearRenderTargetView(render_target_view, backgroundColor);
 
    device_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
    device_context->IASetInputLayout(inputLayout);
@@ -412,8 +428,8 @@ void d2d1_engine::init(HWND hwnd)
 #ifdef _DEBUG
    d3d_coinst.setup_debug_layer();
 #endif
-   d3d_coinst.create_swap_chain(hwnd);
-   d3d_coinst.create_render_target_view();
+   //d3d_coinst.create_swap_chain(hwnd);
+   //d3d_coinst.create_render_target_view();
 
    //d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_IMMUTABLE, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
    d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET, D3D11_RESOURCE_MISC_SHARED);
