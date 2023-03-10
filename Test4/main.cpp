@@ -112,7 +112,7 @@ void d3d11_engine::create_swap_chain(HWND hwnd)
    DXGI_SWAP_CHAIN_DESC1 d3d11SwapChainDesc{};
    d3d11SwapChainDesc.Width = 0; // use window width
    d3d11SwapChainDesc.Height = 0; // use window height
-   d3d11SwapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // DXGI_FORMAT_B8G8R8A8_UNORM;
+   d3d11SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // DXGI_FORMAT_B8G8R8A8_UNORM;
    d3d11SwapChainDesc.SampleDesc.Count = 1;
    d3d11SwapChainDesc.SampleDesc.Quality = 0;
    d3d11SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | D3D11_BIND_RENDER_TARGET;
@@ -128,7 +128,7 @@ void d3d11_engine::create_swap_chain(HWND hwnd)
    DXGI_SWAP_CHAIN_DESC desc{};
    desc.Windowed = TRUE; // Sets the initial state of full-screen mode.
    desc.BufferCount = 2;
-   desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+   desc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
    desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
    desc.SampleDesc.Count = 1;      //multisampling setting
    desc.SampleDesc.Quality = 0;    //vendor-specific flag
@@ -317,7 +317,7 @@ ID3D11Texture2D* d3d11_engine::load_image(std::string image_file)
    textureDesc.Height = texHeight;
    textureDesc.MipLevels = 1;
    textureDesc.ArraySize = 1;
-   textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+   textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
    textureDesc.SampleDesc.Count = 1;
    textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
