@@ -34,7 +34,7 @@ UINT32 d3d11_engine::create_device_and_context()
    ID3D11Device* baseDevice = nullptr;
    ID3D11DeviceContext* baseDeviceContext = nullptr;
    D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
-   UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+   UINT creationFlags = 0; // D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 #if defined(_DEBUG)
    creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
@@ -112,7 +112,7 @@ void d3d11_engine::create_swap_chain(HWND hwnd)
    DXGI_SWAP_CHAIN_DESC1 d3d11SwapChainDesc{};
    d3d11SwapChainDesc.Width = 0; // use window width
    d3d11SwapChainDesc.Height = 0; // use window height
-   d3d11SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+   d3d11SwapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // DXGI_FORMAT_B8G8R8A8_UNORM;
    d3d11SwapChainDesc.SampleDesc.Count = 1;
    d3d11SwapChainDesc.SampleDesc.Quality = 0;
    d3d11SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | D3D11_BIND_RENDER_TARGET;
