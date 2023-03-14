@@ -34,7 +34,7 @@ UINT32 d3d11_engine::create_device_and_context()
    ID3D11Device* baseDevice = nullptr;
    ID3D11DeviceContext* baseDeviceContext = nullptr;
    D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
-   UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+   UINT creationFlags = 0; // D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 #if defined(_DEBUG)
    creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
@@ -112,7 +112,7 @@ void d3d11_engine::create_swap_chain(HWND hwnd)
    DXGI_SWAP_CHAIN_DESC1 d3d11SwapChainDesc{};
    d3d11SwapChainDesc.Width = 0; // use window width
    d3d11SwapChainDesc.Height = 0; // use window height
-   d3d11SwapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+   d3d11SwapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // DXGI_FORMAT_B8G8R8A8_UNORM;
    d3d11SwapChainDesc.SampleDesc.Count = 1;
    d3d11SwapChainDesc.SampleDesc.Quality = 0;
    d3d11SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT | D3D11_BIND_RENDER_TARGET;
@@ -128,7 +128,7 @@ void d3d11_engine::create_swap_chain(HWND hwnd)
    DXGI_SWAP_CHAIN_DESC desc{};
    desc.Windowed = TRUE; // Sets the initial state of full-screen mode.
    desc.BufferCount = 2;
-   desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+   desc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
    desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
    desc.SampleDesc.Count = 1;      //multisampling setting
    desc.SampleDesc.Quality = 0;    //vendor-specific flag
@@ -260,12 +260,12 @@ void d3d11_engine::create_sampler_state()
 }
 
 
-void d3d11_engine::create_texture2d(std::string image_file, D3D11_USAGE usage, UINT bind_flags, UINT misc_flags)
+ID3D11Texture2D* d3d11_engine::create_texture2d(std::string image_file, D3D11_USAGE usage, UINT bind_flags, UINT misc_flags)
 {
-   
+   ID3D11Texture2D* texture2d;
    if (usage == D3D11_USAGE_IMMUTABLE)
    {
-      texture = load_image(image_file);
+      texture2d = load_image(image_file);
    }
    else
    {
@@ -279,24 +279,42 @@ void d3d11_engine::create_texture2d(std::string image_file, D3D11_USAGE usage, U
       texture_desc.BindFlags = bind_flags;
       texture_desc.MiscFlags = misc_flags;
 
-      AssertHResult(device->CreateTexture2D(&texture_desc, NULL, &texture), "Fail to create texture");
+      AssertHResult(device->CreateTexture2D(&texture_desc, NULL, &texture2d), "Fail to create texture");
 
-      device_context->CopyResource(texture, image);
+      device_context->CopyResource(texture2d, image);
 
       image->Release();
    }
 
-   if (bind_flags & D3D11_BIND_SHADER_RESOURCE && swap_chain)
+   return texture2d;
+}
+
+void d3d11_engine::create_texture2d()
+{
+   texture = create_texture2d("testTexture.png", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
+
+   if (swap_chain)
    {
       AssertHResult(device->CreateShaderResourceView(texture, nullptr, &textureView), "Fail to create SRV");
    }
 
 }
 
-void d3d11_engine::create_texture2d()
+void d3d11_engine::load_image(ID3D11Texture2D* texture, std::string image_file)
 {
-   create_texture2d("testTexture.png", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
-   // create_texture2d("d2d_image.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0);
+   ID3D11Texture2D* image = load_image(image_file);
+
+   D3D11_TEXTURE2D_DESC image_desc = {};
+   D3D11_TEXTURE2D_DESC texture_desc = {};
+   image->GetDesc(&image_desc);
+   image->GetDesc(&texture_desc);
+
+   assert(image_desc.Width == texture_desc.Width && image_desc.Height == texture_desc.Height);
+
+   device_context->CopyResource(texture, image);
+
+   image->Release();
+
 }
 
 // Load Image
@@ -306,8 +324,11 @@ ID3D11Texture2D* d3d11_engine::load_image(std::string image_file)
 
    int texWidth, texHeight, texNumChannels;
    int texForceNumChannels = 4;
-   unsigned char* testTextureBytes = stbi_load(image_file.c_str(), &texWidth, &texHeight,
-      &texNumChannels, texForceNumChannels);
+   unsigned char* testTextureBytes = stbi_load(image_file.c_str(),
+      &texWidth,
+      &texHeight,
+      &texNumChannels,
+      texForceNumChannels);
    assert(testTextureBytes);
    int texBytesPerRow = 4 * texWidth;
 
@@ -317,7 +338,7 @@ ID3D11Texture2D* d3d11_engine::load_image(std::string image_file)
    textureDesc.Height = texHeight;
    textureDesc.MipLevels = 1;
    textureDesc.ArraySize = 1;
-   textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+   textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // DXGI_FORMAT_B8G8R8A8_UNORM;
    textureDesc.SampleDesc.Count = 1;
    textureDesc.Usage = D3D11_USAGE_IMMUTABLE;
    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
@@ -394,17 +415,32 @@ void d3d11_engine::init(HWND hwnd)
    create_vertex_buffer();
    create_sampler_state();
    create_texture2d();
+
 }
 
 void d3d11_engine::update_image(d2d1_engine& d2d)
 {
 
+#define TEST_USE_SHARED_RESOURCE 0
+// 0 - rose, shared texture, 1 - dandelion, overwrite shared texture, 2 - dahlia, local texture
+
    if (!shared_texture)
    {
-      HANDLE resourceHandle = d2d.shared_handle();
+#if TEST_USE_SHARED_RESOURCE < 2
+      HANDLE resource_handle = d2d.shared_handle();
 
-      AssertHResult(device->OpenSharedResource(resourceHandle, __uuidof(ID3D11Texture2D), (void**)&shared_texture), "Failed to open shared resource");
+      AssertHResult(device->OpenSharedResource(resource_handle, __uuidof(ID3D11Texture2D), (void**)&shared_texture), "Failed to open shared resource");
       device_context->Flush();
+
+#if TEST_USE_SHARED_RESOURCE ==1
+      // test dandelan.jpg
+      load_image(shared_texture, "dandelion.jpg");
+      device_context->Flush();
+#endif
+
+#else
+      shared_texture = create_texture2d("dahlia.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
+#endif
    }
 
    D3D11_TEXTURE2D_DESC d2dTextureDesc;
@@ -416,7 +452,6 @@ void d3d11_engine::update_image(d2d1_engine& d2d)
    D3D11_BOX d3dBox = { 0, 0, 0, d2dTextureDesc.Width, d2dTextureDesc.Height, 1 };
 
    device_context->CopySubresourceRegion(texture, 0, (d3dTextureDesc.Width - d2dTextureDesc.Width) / 2, (d3dTextureDesc.Height - d2dTextureDesc.Height) / 2, 0, shared_texture, 0, &d3dBox);
-   //device_context->CopySubresourceRegion(texture, 0, 0, 0, 0, d2d_texture, 0, &d3dBox);
 
 }
 
@@ -431,11 +466,14 @@ void d2d1_engine::init(HWND hwnd)
 #endif
    //d3d_coinst.create_swap_chain(hwnd);
    //d3d_coinst.create_render_target_view();
-
    //d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_IMMUTABLE, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
-   d3d_coinst.create_texture2d("d2d_image.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET, D3D11_RESOURCE_MISC_SHARED);
 
-   d3d_coinst.device_context->Flush();
+   d3d_coinst.set_texture2d("rose.jpg",
+      D3D11_USAGE_DEFAULT,
+      D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
+      D3D11_RESOURCE_MISC_SHARED);
+
+   d3d_coinst.get_context()->Flush();
 
    {
       IDXGISurface* surface = nullptr;

@@ -28,7 +28,7 @@ class d3d11_engine
 {
 private:
    ID3D11Device1* device;
-   ID3D11DeviceContext1* device_context;
+   ID3D11DeviceContext1* device_context = nullptr;
    IDXGISwapChain1* swap_chain;
    ID3D11Debug* d3dDebug = nullptr;
    ID3D11RenderTargetView* render_target_view;
@@ -46,13 +46,12 @@ private:
    ID3D11ShaderResourceView* textureView = nullptr;
 
 
-   friend class d2d1_engine;
+   void create_texture2d();
+
 public:
 
-   // Get methods
-   auto get_texture2d()->ID3D11Texture2D* { return texture; }
-
-
+   ID3D11Texture2D* get_texture2d() { return texture; }
+   ID3D11DeviceContext1* get_context() { return device_context; }
 
    // Create D3D11 Device and Context
    UINT32 create_device_and_context();
@@ -84,12 +83,15 @@ public:
    // Load Image
    ID3D11Texture2D* load_image(std::string image_file);
 
-
-   void create_texture2d(std::string image_file, D3D11_USAGE usage, UINT bind_flags, UINT misc_flags);
-
-   void create_texture2d();
+   void load_image(ID3D11Texture2D* texture, std::string image_file);
 
 
+   ID3D11Texture2D* create_texture2d(std::string image_file, D3D11_USAGE usage, UINT bind_flags, UINT misc_flags);
+
+   void set_texture2d(std::string image_file, D3D11_USAGE usage, UINT bind_flags, UINT misc_flags)
+   {
+      texture = create_texture2d(image_file, usage, bind_flags, misc_flags);
+   }
 
 
    virtual void draw(D3D11_VIEWPORT& viewport);
