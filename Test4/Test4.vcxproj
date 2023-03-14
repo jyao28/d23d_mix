@@ -125,7 +125,10 @@
       <Command>copy /Y testTexture.png $(outdir)
 copy /Y d2d_image.jpg $(outdir)
 copy /Y shaders.hlsl $(outdir)
-</Command>
+copy /Y rose.jpg $(outdir)
+copy /Y dandelion.jpg $(outdir)
+copy /Y dahlia.jpg $(outdir)
+copy /Y dandelion-d.jpg $(outdir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
