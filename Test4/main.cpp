@@ -2,7 +2,7 @@
 #define NOMINMAX
 
 #include "engine.h"
-
+#include <shellapi.h>
 #include <windows.h>
 #include <d3d11_1.h>
 #pragma comment(lib, "d3d11.lib")
@@ -21,6 +21,7 @@
 #include "stb_image.h"
 
 static bool global_windowDidResize = false;
+static UINT global_test_case = 0;
 
 void AssertHResult(HRESULT hr, std::string&& errorMsg)
 {
@@ -420,27 +421,32 @@ void d3d11_engine::init(HWND hwnd)
 
 void d3d11_engine::update_image(d2d1_engine& d2d)
 {
-
-#define TEST_USE_SHARED_RESOURCE 0
-// 0 - rose, shared texture, 1 - dandelion, overwrite shared texture, 2 - dahlia, local texture
-
    if (!shared_texture)
    {
-#if TEST_USE_SHARED_RESOURCE < 2
-      HANDLE resource_handle = d2d.shared_handle();
+      // 0 - rose, shared texture, 1 - dandelion, overwrite shared texture, 2 - dahlia, local texture
+      switch (global_test_case)
+      {
+      default:
+      case 0:
+      case 1:
+      {
+         HANDLE resource_handle = d2d.shared_handle();
 
-      AssertHResult(device->OpenSharedResource(resource_handle, __uuidof(ID3D11Texture2D), (void**)&shared_texture), "Failed to open shared resource");
-      device_context->Flush();
+         AssertHResult(device->OpenSharedResource(resource_handle, __uuidof(ID3D11Texture2D), (void**)&shared_texture), "Failed to open shared resource");
+         device_context->Flush();
 
-#if TEST_USE_SHARED_RESOURCE ==1
-      // test dandelan.jpg
-      load_image(shared_texture, "dandelion.jpg");
-      device_context->Flush();
-#endif
+         if (global_test_case == 1)
+         {
+            // test dandelan.jpg
+            load_image(shared_texture, "dandelion.jpg");
+            device_context->Flush();
+         }
+      }
+         break;
 
-#else
-      shared_texture = create_texture2d("dahlia.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
-#endif
+      case 2:
+         shared_texture = create_texture2d("dahlia.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
+      }
    }
 
    D3D11_TEXTURE2D_DESC d2dTextureDesc;
@@ -571,6 +577,28 @@ HWND open_window(HINSTANCE hInstance)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nShowCmd*/)
 {
+   LPWSTR* szArglist;
+   int nArgs = 0;
+   szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+   if (szArglist && nArgs == 2)
+   {
+      LPWSTR par= szArglist[1];
+      LPWSTR test_case;
+
+      test_case = (_wcsnicmp(par, L"-test=", 6) == 0) ? &par[6] : par;
+      if (wcslen(test_case) == 1)
+      {
+         if (iswdigit(*test_case)) {
+            global_test_case = *test_case - L'0';
+         }
+         else
+         {
+            global_test_case = towupper(*test_case) - L'A';
+         }
+      }
+   }
+   LocalFree(szArglist);
+
    // Open a window
    HWND hwnd = open_window(hInstance);
 
