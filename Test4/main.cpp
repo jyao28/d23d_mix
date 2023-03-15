@@ -427,8 +427,8 @@ void d3d11_engine::update_image(d2d1_engine& d2d)
       switch (global_test_case)
       {
       default:
-      case 0:
-      case 1:
+      case 0: // Rose A, shared texture
+      case 1: // Dandelion B, overwrite shared texture
       {
          HANDLE resource_handle = d2d.shared_handle();
 
@@ -444,8 +444,10 @@ void d3d11_engine::update_image(d2d1_engine& d2d)
       }
          break;
 
-      case 2:
+      case 2: // Dahlia C, local texture
          shared_texture = create_texture2d("dahlia.jpg", D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, D3D11_RESOURCE_MISC_SHARED);
+         device_context->Flush();
+         break;
       }
    }
 
