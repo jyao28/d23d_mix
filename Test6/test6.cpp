@@ -125,21 +125,6 @@ void d3d11_engine::create_swap_chain(HWND hwnd)
 
    AssertHResult(dxgiFactory->CreateSwapChainForHwnd(device, hwnd, &d3d11SwapChainDesc, 0, 0, &swap_chain), "Failed to create swap chain");
 
-#if 0
-   DXGI_SWAP_CHAIN_DESC desc{};
-   desc.Windowed = TRUE; // Sets the initial state of full-screen mode.
-   desc.BufferCount = 2;
-   desc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-   desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-   desc.SampleDesc.Count = 1;      //multisampling setting
-   desc.SampleDesc.Quality = 0;    //vendor-specific flag
-   desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-   desc.OutputWindow = hwnd;
-
-   HRESULT hResult = dxgiFactory->CreateSwapChain(device, &desc, &swap_chain);
-   assert(SUCCEEDED(hResult));
-#endif
-
    dxgiFactory->Release();
 }
 
